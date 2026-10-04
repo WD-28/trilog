@@ -1,0 +1,39 @@
+/* TriLog · Erklärungen: was jede Kennzahl misst und wozu sie dient */
+(function (TL) {
+  'use strict';
+  TL.GLOSSAR = {
+    load: ['Belastung', 'Wie stark eine Einheit dich gefordert hat, in Punkten. Eine Stunde an deiner Schwelle sind 100 Punkte.', 'Macht Schwimmen, Rad und Laufen vergleichbar und ist die Grundlage für Fitness, Ermüdung und Form.'],
+    fitness: ['Fitness', 'Gleitender Schnitt deiner täglichen Belastung über rund 42 Tage.', 'Zeigt, wie viel Training dein Körper langfristig verkraftet hat. Steigt langsam, fällt langsam.'],
+    fatigue: ['Ermüdung', 'Gleitender Schnitt deiner täglichen Belastung über rund 7 Tage.', 'Zeigt, wie viel du kurzfristig in den Beinen hast. Reagiert schnell auf harte Tage.'],
+    form: ['Form', 'Fitness minus Ermüdung.', 'Unter null baust du gerade auf, über null bist du frisch. Für ein Rennen willst du leicht im Plus starten.'],
+    acwr: ['Akut zu chronisch', 'Belastung der letzten 7 Tage geteilt durch den Wochenschnitt der 4 Wochen davor.', 'Zeigt, ob du gerade schneller steigerst als gewohnt. Werte über 1,5 gelten als riskant. In der Forschung umstritten, also ein Hinweis, kein Urteil.'],
+    mono: ['Monotonie', 'Mittelwert geteilt durch Streuung deiner Tageslasten der letzten 7 Tage.', 'Hohe Werte heißen: jeder Tag ähnlich. Wechsel aus leichten und harten Tagen erholt besser.'],
+    ramp: ['Rampe', 'Änderung der Fitness in 7 Tagen.', 'Wie schnell du gerade aufbaust. Mehr als etwa +5 pro Woche hält kaum jemand lange durch.'],
+    vdot: ['VDOT', 'Leistungswert nach Daniels und Gilbert aus Strecke und Zeit eines Laufs.', 'Daraus folgen Prognosen für alle Distanzen und dein lockeres Tempo. Zählt nur echte Laufleistung, keinen Puls.'],
+    lthr: ['Schwellenpuls', 'Puls, den du etwa eine Stunde lang halten kannst.', 'Grundlage für Pulszonen und Belastung. Beim Rad liegt er meist 5 bis 10 Schläge tiefer als beim Laufen.'],
+    hrmax: ['Maximalpuls', 'Höchster Puls, den du mindestens zweimal fast erreicht hast.', 'Einzelne Ausreißer der Uhr werden so ignoriert.'],
+    rest: ['Ruhepuls', 'Puls morgens in völliger Ruhe.', 'Fließt in die Belastung ein. Ohne Angabe rechnet TriLog mit 50.'],
+    ftp: ['FTP', 'Leistung in Watt, die du etwa eine Stunde halten kannst.', 'Die zentrale Radkennzahl: Zonen, Belastung und Rennprognose hängen daran. Am genauesten aus einem 20-Minuten-Test (Ergebnis × 0,95).'],
+    wkg: ['W/kg', 'FTP geteilt durch dein Gewicht.', 'Macht Fahrer unterschiedlicher Größe vergleichbar und entscheidet am Berg.'],
+    np: ['Normalized Power', 'Leistung, die eine Fahrt mit wechselndem Tempo physiologisch gekostet hat.', 'Ehrlicher als der Wattschnitt, weil Antritte stärker zählen als Rollen.'],
+    css: ['CSS', 'Kritische Schwimmgeschwindigkeit: das Tempo pro 100 m, das du im Kraul lange halten kannst. Aus einem Test: (Zeit 400 m − Zeit 200 m) ÷ 2.', 'Das VDOT des Schwimmens: Grundlage für Zonen, Belastung und Prognose.'],
+    swolf: ['SWOLF', 'Sekunden plus Züge für eine Bahn.', 'Je niedriger, desto effizienter. Nur auf derselben Beckenlänge vergleichbar.'],
+    p100: ['Tempo pro 100 m', 'Bewegungszeit geteilt durch die geschwommenen Hundertmeter.', 'Die Grundgröße im Schwimmen, vergleichbar mit Minuten pro Kilometer beim Laufen.'],
+    effrun: ['Tempo bei gleichem Puls', 'Lauftempo in deinem häufigsten Pulsbereich, nur aus gleichmäßigen Läufen.', 'Wirst du bei gleichem Puls schneller, wächst deine aerobe Basis, auch ohne Rennen.'],
+    effbike: ['Rad-Effizienz', 'Tempo oder Watt bei gleichem Puls auf flachen Fahrten.', 'Mehr Tempo oder Watt bei gleichem Puls zeigt aerobe Fortschritte.'],
+    zones: ['Zonen', 'Fünf Intensitätsbereiche, abgeleitet aus deiner Schwelle (Puls, Watt oder CSS-Tempo).', 'Im Ausdauersport sollten rund 80 % der Zeit locker (Zone 1 und 2) sein.'],
+    easy: ['Lockere Läufe', 'Läufe von 5 bis 22 km, langsamer als dein Marathontempo und ohne Qualitätsbegriff im Namen.', 'Liegt ihr Puls oft in Zone 3, sammelst du Ermüdung statt Grundlage.'],
+    hard: ['Harte Einheiten', 'Einheiten, deren Name nach Intervallen, Schwelle oder Tempo klingt.', 'Liegt ihr Durchschnittspuls über der Schwelle, waren die schnellen Abschnitte zu hart.'],
+    brick: ['Koppeleinheit', 'Lauf, der höchstens 20 Minuten nach einer Radeinheit beginnt.', 'Trainiert den Wechsel vom Rad zum Laufen, der im Rennen die Beine schwer macht.'],
+    limiter: ['Limiter', 'Die Disziplin, deren Trainingsanteil am weitesten hinter ihrem Anteil an der Rennzeit liegt.', 'Im Triathlon zählt die Summe. Zeit in der schwächsten Disziplin bringt meist am meisten.'],
+    chance: ['Chance', 'Anteil möglicher Renntage, an denen du unter deiner Zielzeit bleibst.', 'Berücksichtigt Prognose und Streuung. 50 % heißt: Ziel und Prognose sind gleich.'],
+    sd: ['Streuung', 'Wie stark die Zielzeit von Renntag zu Renntag schwanken kann.', 'Längere Distanzen, alte Belege oder geschätzte Werte machen sie größer.'],
+    riegel: ['Riegel-Formel', 'Hochrechnung einer Rennzeit auf andere Distanzen mit dem Exponenten 1,06.', 'Zweite Meinung neben VDOT. Liegen beide nah, ist die Prognose stabil.'],
+    wbgt: ['Hitzeaufschlag', 'Aus Renntemperatur und Taupunkt berechnete Wärmebelastung (WBGT).', 'Ab etwa 15 Grad WBGT kostet Wärme messbar Zeit, langsame Läufer mehr als schnelle.'],
+    t12: ['Wechselzeiten', 'Zeit in der Wechselzone von Schwimmen zu Rad (T1) und Rad zu Laufen (T2).', 'Standardwerte je Distanz, im Rennen überschreibbar.'],
+    neo: ['Neoprenanzug', 'Bei kaltem Wasser erlaubt.', 'Spart rund 5 % Schwimmzeit, weil er Auftrieb gibt.'],
+    tri: ['Triathlon-Prognose', 'Schwimmen aus CSS, Rad aus FTP oder Tempo, Laufen aus VDOT mit Aufschlag für müde Beine, dazu die Wechsel.', 'Jeder Teil hat eine eigene Unsicherheit, zusammen ergeben sie die Chance auf deine Zielzeit.'],
+    power: ['Wattmessung', 'Ein Powermeter misst die Leistung am Rad direkt.', 'Mit Watt sind FTP, Zonen und Prognose deutlich genauer. Ohne Watt rechnet TriLog mit Puls und Tempo.'],
+    taper: ['Taper', 'Reduzierter Umfang in den letzten zwei Wochen vor dem Rennen.', 'Senkt die Ermüdung, während die Fitness weitgehend bleibt. So startest du mit positiver Form.']
+  };
+})(window.TL = window.TL || {});
