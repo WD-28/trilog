@@ -34,6 +34,13 @@
     neo: ['Neoprenanzug', 'Bei kaltem Wasser erlaubt.', 'Spart rund 5 % Schwimmzeit, weil er Auftrieb gibt.'],
     tri: ['Triathlon-Prognose', 'Schwimmen aus CSS, Rad aus FTP oder Tempo, Laufen aus VDOT mit Aufschlag für müde Beine, dazu die Wechsel.', 'Jeder Teil hat eine eigene Unsicherheit, zusammen ergeben sie die Chance auf deine Zielzeit.'],
     power: ['Wattmessung', 'Ein Powermeter misst die Leistung am Rad direkt.', 'Mit Watt sind FTP, Zonen und Prognose deutlich genauer. Ohne Watt rechnet TriLog mit Puls und Tempo.'],
+    rpow: ['Laufleistung', 'Von der Uhr geschätzte Leistung beim Laufen in Watt.', 'Hängt weniger von Gelände und Wind ab als das Tempo. Steigen die Watt bei gleichem Puls, wirst du fitter.'],
+    dyn: ['Laufdynamik', 'Kadenz, Schrittlänge, Bodenkontaktzeit und vertikale Bewegung aus den Sensoren deiner Uhr.', 'Zeigt, wie ökonomisch du läufst und ob dein Laufstil bei Müdigkeit nachlässt. Kürzerer Bodenkontakt und weniger Auf und Ab sparen Energie.'],
+    temp: ['Temperatur', 'Temperatur, die deine Uhr während der Einheit gemessen hat.', 'Bei Wärme steigt der Puls bei gleichem Tempo. Der Vergleich erklärt langsamere Sommerläufe. Am Handgelenk liegt der Wert meist über der Lufttemperatur.'],
+    bb: ['Body Battery', 'Garmins Schätzung deiner Energiereserve, hier: wie viel eine Stunde Training gekostet hat.', 'Zeigt, welche Einheiten dich am meisten auslaugen. Es ist ein Modell der Uhr, kein Messwert.'],
+    gear: ['Ausrüstung', 'Kilometer je Schuh, Rad und Verschleißteil, nach Zeitraum und Sportart zugeordnet.', 'Laufschuhe gelten nach etwa 500 bis 800 km als verbraucht, Ketten und Reifen nach etwa 3 000 bis 5 000 km. Das sind Faustregeln, entscheidend ist der Zustand.'],
+    phase: ['Saisonphase', 'Abschnitt der Vorbereitung nach Wochen bis zum Hauptrennen: Grundlage, Aufbau, Wettkampfspezifisch, Taper.', 'Hilft, den Schwerpunkt des Trainings zur richtigen Zeit zu setzen.'],
+    fuel: ['Verpflegung', 'Kohlenhydrate und Flüssigkeit pro Stunde nach Belastungsdauer.', 'Allgemeine Richtwerte: unter 75 Minuten kaum nötig, bis 2,5 Stunden 30 bis 60 g, darüber 60 bis 90 g pro Stunde. Was du verträgst, testest du im Training.'],
     taper: ['Taper', 'Reduzierter Umfang in den letzten zwei Wochen vor dem Rennen.', 'Senkt die Ermüdung, während die Fitness weitgehend bleibt. So startest du mit positiver Form.']
   };
 })(window.TL = window.TL || {});

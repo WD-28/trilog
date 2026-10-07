@@ -1,6 +1,6 @@
 /* TriLog · Offline-Fähigkeit: App-Dateien zwischenspeichern, Trainingsdaten bleiben im Browser-Speicher */
-const CACHE = 'trilog-v1';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'css/trilog.css', 'js/util.js', 'js/data.js', 'js/model.js', 'js/glossar.js', 'js/insights.js', 'js/charts.js', 'js/views.js', 'js/settings.js', 'js/app.js', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
+const CACHE = 'trilog-v2';
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'css/trilog.css', 'js/util.js', 'js/data.js', 'js/model.js', 'js/model-extra.js', 'js/glossar.js', 'js/insights.js', 'js/insights-sport.js', 'js/charts.js', 'js/views-core.js', 'js/views-pages.js', 'js/settings.js', 'js/app.js', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

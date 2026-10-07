@@ -245,3 +245,145 @@
     U.hover(hit, function (e) { var r = s.getBoundingClientRect(), sx = (e.clientX - r.left) * w / r.width, tt = Math.round((a + (sx - ml) / (w - ml - mr) * (b - a)) / 5) * 5; return [U.time(tt) + ' oder schneller', [[Math.round(U.Phi((tt - rt) / sd) * 100) + ' %', 'Chance', 'var(--acc)']]]; });
   };
 })(window.TL = window.TL || {});
+
+/* TriLog · 3D-Jahr und schnelle Glockenkurve */
+(function (TL) {
+  'use strict';
+  var U = TL.u, C = TL.chart, sv = U.sv;
+  function shade(hex, f) { /* f<0 dunkler, f>0 heller */
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = n >> 8 & 255, b = n & 255;
+    function m(c) { return Math.round(f < 0 ? c * (1 + f) : c + (255 - c) * f); }
+    return 'rgb(' + m(r) + ',' + m(g) + ',' + m(b) + ')';
+  }
+  var COL = { swim: '#2A8BC0', bike: '#D5702A', run: '#2A8659' };
+  /* Tageswerte je Sportart und Modus */
+  C.dayValues = function (R, sports, mode) {
+    var days = {}, from = R.from;
+    R.units.forEach(function (u) {
+      if (u.d < from || sports.indexOf(u.sport) < 0) return;
+      var o = days[u.d] || (days[u.d] = {}), v = 0;
+      if (mode === 'load') v = u.load || 0;
+      else if (mode === 'hours') v = u.sec / 3600;
+      else if (mode === 'perf') {
+        v = u.sport === 'run' ? (u.vdot && u.km >= 3 ? u.vdot : 0) : u.sport === 'bike' ? ((u.np || u.pow) && R.bike.powerMode ? (u.np || u.pow) : (u.speed && u.sub !== 'indoor' && u.sec >= 1200 ? u.speed : 0)) : (u.p100 && u.km >= 0.2 ? 100 / u.p100 * 60 : 0);
+        o[u.sport] = Math.max(o[u.sport] || 0, v); return;
+      } else v = u.km ? (u.sport === 'swim' ? u.km * 1000 : u.km) : 0;
+      o[u.sport] = (o[u.sport] || 0) + v;
+    });
+    var act = {}; R.units.forEach(function (u) { if (u.d >= from) act[u.d] = 1; });
+    return { days: days, act: act };
+  };
+  C.skyline = function (svg, R, o) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var sports = o.sports, mode = o.mode, dv = C.dayValues(R, sports, mode), FROM = R.from, TODAY = R.today, start = FROM - U.wday(FROM);
+    var stacked = sports.length > 1, maxV = 0, minV = 1e9, maxD = null;
+    for (var d = FROM; d <= TODAY; d++) { var x = dv.days[d]; if (!x) continue; var t = 0; sports.forEach(function (s) { t += x[s] || 0; }); if (t > maxV) { maxV = t; maxD = d; } if (t > 0 && t < minV) minV = t; }
+    var perf = mode === 'perf', base = perf ? Math.max(0, minV - (maxV - minV) * 0.15) : 0;
+    function H(v) { if (v <= 0) return 0; return Math.max(2.5, (v - base) / Math.max(1e-9, maxV - base) * 128); }
+    function P(u, v, h) { return [8.2 * u + 5.0 * v, -1.8 * u + 3.1 * v - h]; }
+    var items = [], minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+    for (d = FROM; d <= TODAY; d++) {
+      var u = Math.floor((d - start) / 7), vv = 6 - U.wday(d), x2 = dv.days[d], segs = [], tot = 0;
+      if (x2) sports.forEach(function (s) { if (x2[s] > 0) { segs.push([s, x2[s]]); tot += x2[s]; } });
+      var h = H(tot);
+      items.push({ d: d, u: u, v: vv, h: h, tot: tot, segs: segs, act: dv.act[d], max: d === maxD, raw: x2 });
+      [[u + .17, vv + .17, h], [u + .83, vv + .83, 0], [u + .17, vv + .83, 0], [u + .83, vv + .17, h]].forEach(function (q) { var p = P(q[0], q[1], q[2]); minx = Math.min(minx, p[0]); maxx = Math.max(maxx, p[0]); miny = Math.min(miny, p[1]); maxy = Math.max(maxy, p[1]); });
+    }
+    items.sort(function (a, b) { return (a.v - .61 * a.u) - (b.v - .61 * b.u); });
+    var pad = 6; svg.setAttribute('viewBox', (minx - pad) + ' ' + (miny - 22) + ' ' + (maxx - minx + 2 * pad) + ' ' + (maxy - miny + 36));
+    var nodes = [];
+    var light = o.dark; /* dunkler Hintergrund: farbige Säulen; farbiger Hintergrund: helle Säulen */
+    items.forEach(function (it) {
+      var g = sv('g', {}); svg.appendChild(g);
+      if (!it.h) { g.appendChild(sv('polygon', { points: [P(it.u + .17, it.v + .17, 0), P(it.u + .83, it.v + .17, 0), P(it.u + .83, it.v + .83, 0), P(it.u + .17, it.v + .83, 0)].join(' '), fill: '#fff', 'fill-opacity': it.act ? .2 : .085 })); return; }
+      var parts = [], acc = 0;
+      if (perf || !stacked) parts.push([sports[0], it.h]);
+      else it.segs.forEach(function (sg) { parts.push([sg[0], it.h * sg[1] / it.tot]); });
+      var h0 = 0;
+      parts.forEach(function (p, k) {
+        var col = light ? COL[p[0]] : null, top = k === parts.length - 1;
+        var cs = it.max && !light ? ['#FFE8A3', '#F0C766', '#D4A33A'] : light ? [shade(col, 0.35), col, shade(col, -0.28)] : ['#FFFFFF', 'rgba(255,255,255,.62)', 'rgba(255,255,255,.4)'];
+        if (it.max && light) cs = ['#FFE8A3', '#F0C766', '#D4A33A'];
+        var L = sv('polygon', { fill: cs[1] }), F = sv('polygon', { fill: cs[2] }), T = top ? sv('polygon', { fill: cs[0] }) : null;
+        g.appendChild(L); g.appendChild(F); if (T) g.appendChild(T);
+        nodes.push({ it: it, L: L, F: F, T: T, h0: h0, h1: h0 + p[1] });
+        h0 += p[1];
+      });
+      U.hover(g, function () {
+        var rows = [];
+        if (it.raw) sports.forEach(function (s) { var v = it.raw[s]; if (!v) return; rows.push([mode === 'load' ? U.num(v, 0) + ' Punkte' : mode === 'hours' ? U.hm(v * 3600) : perf ? (s === 'run' ? 'VDOT ' + U.num(v, 1) : s === 'bike' ? (R.bike.powerMode ? U.num(v, 0) + ' W' : U.num(v, 1) + ' km/h') : U.pace(6000 / v) + ' /100 m') : (s === 'swim' ? U.num(v, 0) + ' m' : U.num(v, 1) + ' km'), TL.model.SPORTNAME[s], 'var(--c-' + s + ')']); });
+        return [U.WDL[U.wday(it.d)] + ', ' + U.de(it.d), rows];
+      });
+    });
+    function setH(n, k) {
+      var it = n.it, u = it.u, v = it.v, a = n.h0 * k, b = n.h1 * k;
+      n.L.setAttribute('points', [P(u + .17, v + .17, a), P(u + .17, v + .83, a), P(u + .17, v + .83, b), P(u + .17, v + .17, b)].join(' '));
+      n.F.setAttribute('points', [P(u + .17, v + .83, a), P(u + .83, v + .83, a), P(u + .83, v + .83, b), P(u + .17, v + .83, b)].join(' '));
+      if (n.T) n.T.setAttribute('points', [P(u + .17, v + .17, b), P(u + .83, v + .17, b), P(u + .83, v + .83, b), P(u + .17, v + .83, b)].join(' '));
+    }
+    var seen = {};
+    for (d = FROM; d <= TODAY; d++) { var dt = new Date(d * 864e5); if (dt.getUTCDate() === 1) { var key = dt.getUTCMonth() + '-' + dt.getUTCFullYear(); if (seen[key]) continue; seen[key] = 1; var uu = Math.floor((d - start) / 7), p = P(uu + .5, 7.9, 0); svg.appendChild(sv('text', { x: p[0], y: p[1] + 5, 'font-size': 7, fill: 'rgba(255,255,255,.65)', 'text-anchor': 'middle' }, U.MON[dt.getUTCMonth()])); } }
+    var mx = items.filter(function (i) { return i.max; })[0];
+    if (mx) {
+      var tp = P(mx.u + .5, mx.v + .5, mx.h), lx = Math.min(tp[0] + 14, maxx - 40), ly = tp[1] - 10;
+      svg.appendChild(sv('line', { x1: tp[0], y1: tp[1], x2: lx, y2: ly, stroke: 'rgba(255,255,255,.75)', 'stroke-width': .6 }));
+      var lab = mode === 'load' ? U.num(maxV, 0) + ' Punkte' : mode === 'hours' ? U.hm(maxV * 3600) : perf ? (sports[0] === 'run' ? 'VDOT ' + U.num(maxV, 1) : sports[0] === 'bike' ? (R.bike.powerMode ? U.num(maxV, 0) + ' W' : U.num(maxV, 1) + ' km/h') : U.pace(6000 / maxV) + ' /100 m') : (sports[0] === 'swim' && !stacked ? U.num(maxV, 0) + ' m' : U.num(maxV, 1) + ' km');
+      svg.appendChild(sv('text', { x: lx + 2, y: ly - 2, 'font-size': 8.5, 'font-weight': 700, fill: '#fff' }, lab));
+      svg.appendChild(sv('text', { x: lx + 2, y: ly + 7, 'font-size': 6.5, fill: 'rgba(255,255,255,.75)' }, U.de(mx.d)));
+    }
+    var anim = o.animate && U.MOTION, maxU = Math.floor((TODAY - start) / 7) || 1;
+    if (anim) {
+      var t0 = performance.now();
+      nodes.forEach(function (n) { setH(n, 0); });
+      (function f(t) { var done = true; nodes.forEach(function (n) { var p = Math.min(1, Math.max(0, (t - t0 - n.it.u / maxU * 650) / 750)); if (p < 1) done = false; var q = p >= 1 ? 1 : 1 + 2.15 * Math.pow(p - 1, 3) + 1.15 * Math.pow(p - 1, 2); setH(n, q); }); if (!done) requestAnimationFrame(f); else nodes.forEach(function (n) { setH(n, 1); }); })(t0);
+      setTimeout(function () { nodes.forEach(function (n) { setH(n, 1); }); }, 2500);
+    } else nodes.forEach(function (n) { setH(n, 1); });
+    return { max: maxV, min: minV === 1e9 ? 0 : minV, base: base };
+  };
+
+  /* Glockenkurve, die sich beim Ziehen nur teilweise neu zeichnet */
+  C.bellLive = function (host, rt, sd) {
+    U.clear(host);
+    var w = Math.max(260, host.clientWidth || 320), h = 200, ml = 8, mr = 8, mt = 26, mb = 40;
+    var s = sv('svg', { class: 'chart', viewBox: '0 0 ' + w + ' ' + h, width: '100%', height: h, role: 'img', 'aria-label': 'Verteilung möglicher Zielzeiten' }); host.appendChild(s);
+    var a = rt - 3.2 * sd, b = rt + 3.2 * sd;
+    function X(t) { return ml + (t - a) / (b - a) * (w - ml - mr); } function pdf(t) { var z = (t - rt) / sd; return Math.exp(-z * z / 2); } function Y(p) { return mt + (1 - p) * (h - mt - mb); }
+    var base = Y(0), N = 90, pts = [], i, t;
+    for (i = 0; i <= N; i++) { t = a + (b - a) * i / N; pts.push(X(t).toFixed(1) + ' ' + Y(pdf(t)).toFixed(1)); }
+    s.appendChild(sv('path', { d: 'M' + X(a) + ' ' + base + 'L' + pts.join('L') + 'L' + X(b) + ' ' + base + 'Z', style: 'fill:var(--track);stroke:var(--neutral)', 'stroke-width': 1.2 }));
+    var fill = sv('path', { style: 'fill:var(--acc);fill-opacity:.42;stroke:var(--acc)', 'stroke-width': 1.5 }); s.appendChild(fill);
+    s.appendChild(sv('line', { x1: ml, x2: w - mr, y1: base, y2: base, style: 'stroke:var(--ink)', 'stroke-opacity': .2 }));
+    var span = b - a, maxT = Math.max(3, Math.floor(w / 72)), cand = [15, 30, 60, 120, 300, 600, 900, 1800, 3600], st = cand.filter(function (c) { return span / c <= maxT; })[0] || 3600;
+    function tl(t) { return t >= 3600 ? Math.floor(t / 3600) + ':' + U.pad(Math.floor(t % 3600 / 60)) + ' h' : U.time(t); }
+    for (t = Math.ceil(a / st) * st; t <= b; t += st) s.appendChild(sv('text', { x: X(t), y: base + 14, class: 'ax', 'text-anchor': 'middle' }, tl(t)));
+    var rx = X(rt); s.appendChild(sv('line', { x1: rx, x2: rx, y1: Y(1), y2: base, style: 'stroke:var(--ink)', 'stroke-dasharray': '4 4' }));
+    s.appendChild(sv('text', { x: U.clamp(rx, 50, w - 50), y: base + 31, class: 'lbl', 'text-anchor': 'middle', style: 'fill:var(--ink)' }, U.time(rt) + ' Prognose'));
+    var gl = sv('line', { y1: mt - 8, y2: base, style: 'stroke:var(--acc-t)', 'stroke-width': 2 }), gt = sv('text', { y: mt - 12, class: 'lbl', 'text-anchor': 'middle', style: 'fill:var(--acc-t)' }), gd = sv('circle', { r: 5, style: 'fill:var(--acc-t);stroke:var(--card)', 'stroke-width': 2 });
+    s.appendChild(gl); s.appendChild(gd); s.appendChild(gt);
+    var hit = sv('rect', { x: ml, y: 0, width: w - ml - mr, height: base, fill: 'transparent' }); s.appendChild(hit);
+    U.hover(hit, function (e) { var r = s.getBoundingClientRect(), sx = (e.clientX - r.left) * w / r.width, tt = Math.round((a + (sx - ml) / (w - ml - mr) * (b - a)) / 5) * 5; return [U.time(tt) + ' oder schneller', [[Math.round(U.Phi((tt - rt) / sd) * 100) + ' %', 'Chance', 'var(--acc)']]]; });
+    return {
+      set: function (goal) {
+        var gc = U.clamp(goal, a, b), lp = [];
+        for (var i = 0; i <= 50; i++) { var t = a + (gc - a) * i / 50; lp.push(X(t).toFixed(1) + ' ' + Y(pdf(t)).toFixed(1)); }
+        fill.setAttribute('d', gc > a ? 'M' + X(a) + ' ' + base + 'L' + lp.join('L') + 'L' + X(gc) + ' ' + base + 'Z' : '');
+        var on = goal >= a && goal <= b, gx = X(gc);
+        [gl, gd, gt].forEach(function (n) { n.style.display = on ? '' : 'none'; });
+        gl.setAttribute('x1', gx); gl.setAttribute('x2', gx); gd.setAttribute('cx', gx); gd.setAttribute('cy', Y(pdf(gc)));
+        gt.setAttribute('x', U.clamp(gx, 46, w - 46)); gt.textContent = 'Ziel ' + U.time(goal);
+      }
+    };
+  };
+
+  /* Waagrechte Balken (HTML) */
+  C.hbars = function (host, rows, o) {
+    U.clear(host); o = o || {};
+    var mx = Math.max.apply(null, rows.map(function (r) { return r.v || 0; }).concat([o.max || 0, 1e-9]));
+    rows.forEach(function (r) {
+      var d = U.el('div', { cls: 'hbar' });
+      d.innerHTML = '<span>' + U.esc(r.label) + '</span><div class="track"><i class="' + (r.cls || '') + '" style="width:' + (r.v ? Math.max(2, r.v / mx * 100) : 0) + '%"></i></div><b>' + U.esc(r.txt) + '</b>';
+      host.appendChild(d);
+    });
+    U.srTable(host, o.label || 'Balken', ['Name', 'Wert'], rows.map(function (r) { return [r.label, r.txt]; }));
+  };
+})(window.TL = window.TL || {});

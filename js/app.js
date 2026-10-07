@@ -4,58 +4,101 @@
   var U = TL.u, M = TL.model, V = TL.views, S = TL.settings;
   var el = U.el, esc = U.esc;
   var A = TL.app = {};
-  var st = { view: 'tri', period: 365, triKey: null, plan: {}, moreSection: null };
-  try { var saved = JSON.parse(sessionStorage.getItem('trilog.view') || 'null'); if (saved) { st.view = saved.view || 'tri'; st.period = saved.period || 365; st.triKey = saved.triKey || null; } } catch (e) {}
-  var R = null;
-  var TABS = [['tri', 'Triathlon', 'tri'], ['swim', 'Schwimmen', 'swim'], ['bike', 'Rad', 'bike'], ['run', 'Laufen', 'run'], ['mehr', 'Mehr', 'gear']];
+  var st = { view: null, period: 365, triKey: null, plan: {}, moreSection: null, skyMode: null };
+  try { var saved = JSON.parse(sessionStorage.getItem('trilog.view') || 'null'); if (saved) { st.view = saved.view || null; st.period = saved.period || 365; st.triKey = saved.triKey || null; } } catch (e) {}
+  var R = null, TOC = [];
+  var ICON = { tri: 'tri', multi: 'tri', swim: 'swim', bike: 'bike', run: 'run', mehr: 'gear' };
 
-  A.reload = function (view) { if (view) st.view = view; compute(); A.render(); };
+  /* Module: frei kombinierbar. Alle drei → Triathlon, zwei → Gesamt, eins → nur diese Seite */
+  A.modules = function () { var m = (TL.store.profile().modules) || { swim: true, bike: true, run: true }; var on = ['swim', 'bike', 'run'].filter(function (k) { return m[k] !== false; }); return on.length ? on : ['run']; };
+  function tabs() {
+    var on = A.modules(), t = [];
+    if (on.length === 3) t.push(['tri', 'Triathlon']); else if (on.length === 2) t.push(['multi', 'Gesamt']);
+    on.forEach(function (k) { t.push([k, V.NAME[k]]); });
+    t.push(['mehr', 'Mehr']);
+    return t;
+  }
+  function validView(v) { return tabs().some(function (t) { return t[0] === v; }); }
+
+  A.reload = function (view, keep) { if (view) st.view = view; compute(); A.render(keep); };
   function compute() {
     st.plan = TL.store.plan();
-    R = M.compute(TL.store.units(), TL.store.profile(), TL.store.races(), st.plan, {});
+    R = M.compute(TL.store.units(), TL.store.profile(), TL.store.races(), st.plan, { gear: TL.store.gear(), assign: TL.store.assign() });
   }
 
   /* ---------- Kopfzeile ---------- */
   A.renderHeader = function () {
     var h = U.$('top'); U.clear(h);
-    var brand = el('div', { cls: 'brand' }, '<span class="mark" aria-hidden="true"><i class="s-swim"></i><i class="s-bike"></i><i class="s-run"></i></span><span class="wm">Tri<b>Log</b></span>');
-    h.appendChild(brand);
-    var right = el('div', { cls: 'hright' });
-    if (st.view !== 'mehr' && R && !R.empty) {
-      right.appendChild(V.chips([[91, '3M'], [182, '6M'], [365, '12M']], st.period, function (p) { st.period = p; persist(); A.render(true); }, 'period'));
-    }
+    h.appendChild(el('div', { cls: 'brand' }, '<span class="mark" aria-hidden="true"><i class="s-swim"></i><i class="s-bike"></i><i class="s-run"></i></span><span class="wm">Tri<b>Log</b></span>'));
+    var T = tabs(), right = el('div', { cls: 'hright' });
+    if (st.view !== 'mehr' && R && !R.empty) right.appendChild(V.chips([[91, '3M'], [182, '6M'], [365, '12M']], st.period, function (p) { st.period = p; persist(); A.render(true); }, 'period'));
     var b = S.backupState(), bk = el('button', { cls: 'bkbtn press ' + b.cls, type: 'button', 'aria-label': 'Sicherung: ' + b.title, title: b.title + ' · ' + b.text }, '<span class="bdot ' + b.cls + '"></span>' + U.ico('save', 18));
     bk.onclick = function () { if (b.cls === 'none') { A.openMore('daten'); return; } S.saveBackup(); };
     right.appendChild(bk);
-    var tabs = el('nav', { cls: 'dtabs', 'aria-label': 'Ansichten' });
-    TABS.forEach(function (t) { var a = el('button', { cls: 'press t-' + t[0] + (st.view === t[0] ? ' on' : ''), type: 'button', 'aria-current': st.view === t[0] ? 'page' : null }, U.ico(t[2], 17) + '<span>' + t[1] + '</span>'); a.onclick = function () { A.show(t[0]); }; tabs.appendChild(a); });
-    h.appendChild(tabs);
-    h.appendChild(right);
-    /* untere Tab-Leiste am Handy */
+    var nav = el('nav', { cls: 'dtabs', 'aria-label': 'Ansichten' });
+    T.forEach(function (t) { var a = el('button', { cls: 'press t-' + t[0] + (st.view === t[0] ? ' on' : ''), type: 'button', 'aria-current': st.view === t[0] ? 'page' : null }, U.ico(ICON[t[0]], 17) + '<span>' + t[1] + '</span>'); a.onclick = function () { A.show(t[0]); }; nav.appendChild(a); });
+    h.appendChild(nav); h.appendChild(right);
     var tb = U.$('tabbar'); U.clear(tb);
-    TABS.forEach(function (t) { var a = el('button', { cls: 'press t-' + t[0] + (st.view === t[0] ? ' on' : ''), type: 'button', 'aria-current': st.view === t[0] ? 'page' : null }, U.ico(t[2], 22) + '<span>' + t[1] + '</span>'); a.onclick = function () { A.show(t[0]); }; tb.appendChild(a); });
+    T.forEach(function (t) { var a = el('button', { cls: 'press t-' + t[0] + (st.view === t[0] ? ' on' : ''), type: 'button', 'aria-current': st.view === t[0] ? 'page' : null }, U.ico(ICON[t[0]], 22) + '<span>' + t[1] + '</span>'); a.onclick = function () { A.show(t[0]); }; tb.appendChild(a); });
   };
   function persist() { try { sessionStorage.setItem('trilog.view', JSON.stringify({ view: st.view, period: st.period, triKey: st.triKey })); } catch (e) {} }
-  A.show = function (v) { st.view = v; persist(); A.render(); window.scrollTo(0, 0); };
+  A.show = function (v) { st.view = v; st.skyDrawn = false; persist(); A.render(); window.scrollTo(0, 0); };
+
+  /* ---------- Inhaltsverzeichnis und Kapitel-Leiste ---------- */
+  function renderToc() {
+    var toc = U.$('toc'), chap = U.$('chap'); U.clear(toc); U.clear(chap);
+    U.$('shell').classList.toggle('notoc', !TOC.length);
+    chap.hidden = !TOC.length;
+    if (!TOC.length) return;
+    toc.appendChild(el('p', { cls: 'tt', text: 'Inhalt' }));
+    TOC.forEach(function (t) {
+      [toc, chap].forEach(function (box) { var a = el('a', { href: '#' + t.id, 'data-id': t.id, text: t.title }); a.onclick = function (e) { e.preventDefault(); var x = U.$(t.id); if (x) x.scrollIntoView({ behavior: U.MOTION ? 'smooth' : 'auto', block: 'start' }); }; box.appendChild(a); });
+    });
+    spy();
+  }
+  var lastOn = null;
+  function spy() {
+    if (!TOC.length) return;
+    var y = innerHeight * 0.3, cur = TOC[0].id;
+    TOC.forEach(function (t) { var x = U.$(t.id); if (x && x.getBoundingClientRect().top < y) cur = t.id; });
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = TOC[TOC.length - 1].id;
+    if (cur === lastOn) return; lastOn = cur;
+    [U.$('toc'), U.$('chap')].forEach(function (box) { [].forEach.call(box.querySelectorAll('a'), function (a) { var on = a.getAttribute('data-id') === cur; a.classList.toggle('on', on); if (on && box.id === 'chap') { var l = a.offsetLeft - box.clientWidth / 2 + a.clientWidth / 2; box.scrollTo({ left: l, behavior: U.MOTION ? 'smooth' : 'auto' }); } }); });
+  }
+  window.addEventListener('scroll', function () { requestAnimationFrame(spy); }, { passive: true });
 
   /* ---------- Hauptinhalt ---------- */
   A.render = function (keepScroll) {
     var y = window.scrollY;
+    if (!validView(st.view)) st.view = tabs()[0][0];
     document.documentElement.setAttribute('data-sport', st.view === 'mehr' ? 'tri' : st.view);
     A.renderHeader();
-    var root = U.$('view'); U.clear(root);
-    root.classList.remove('enter'); void root.offsetWidth; if (!keepScroll && U.MOTION) root.classList.add('enter');
+    var root = U.$('view'); U.clear(root); lastOn = null;
+    var wrap = U.$('main'); wrap.classList.remove('enter'); void wrap.offsetWidth; if (!keepScroll && U.MOTION) wrap.classList.add('enter');
+    TOC = [];
     try {
-      if (st.view === 'mehr') S.render(root, R, st);
+      if (st.view === 'mehr') TOC = S.render(root, R, st) || [];
       else if (!R || R.empty) empty(root);
-      else if (st.view === 'tri') V.tri(root, R, st);
-      else V.sport(root, R, st, st.view);
+      else if (st.view === 'tri') TOC = V.tri(root, R, st);
+      else if (st.view === 'multi') TOC = V.multi(root, R, st, A.modules());
+      else TOC = V[st.view](root, R, st);
     } catch (e) { console.error(e); root.appendChild(el('div', { cls: 'card' }, '<h3>Etwas ist schiefgelaufen</h3><p class="muted">' + esc(e.message) + '</p>')); }
+    renderToc();
+    reveal();
     reminder();
     if (keepScroll) window.scrollTo(0, y);
   };
+  /* Kapitel erscheinen beim Hineinscrollen; ohne Bewegung oder bei Problemen stehen sie sofort da */
+  function reveal() {
+    var secs = document.querySelectorAll('#view .sec:not(.herosec)');
+    if (!U.MOTION || !window.IntersectionObserver) return;
+    document.documentElement.classList.add('anim');
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { rootMargin: '0px 0px -8% 0px', threshold: 0.04 });
+    [].forEach.call(secs, function (s) { s.classList.add('rv'); var r = s.getBoundingClientRect(); if (r.top < innerHeight) s.classList.add('in'); else io.observe(s); });
+    setTimeout(function () { [].forEach.call(secs, function (s) { s.classList.add('in'); }); }, 4000);
+  }
   function empty(root) {
-    root.appendChild(el('div', { cls: 'hello' }, '<p class="kick">Willkommen</p><h1>Dein Logbuch ist noch leer<span class="dot">.</span></h1>'));
+    root.appendChild(el('div', { cls: 'mhead' }, '<p class="kick">Willkommen</p><h1>Dein Logbuch ist noch leer.</h1>'));
     var c = el('section', { cls: 'card emptyc' });
     c.innerHTML = '<div class="mark big" aria-hidden="true"><i class="s-swim"></i><i class="s-bike"></i><i class="s-run"></i></div><p>Importiere deinen Garmin-Export, dann rechnet TriLog Form, Prognosen und Zonen für Schwimmen, Rad und Laufen.</p>';
     c.appendChild(V.btn('Garmin-CSV importieren', 'upload', pick, 'primary'));
@@ -67,12 +110,14 @@
 
   /* ---------- Navigation aus Insights ---------- */
   A.go = function (target) {
-    if (['swim', 'bike', 'run'].indexOf(target) >= 0) { A.show(target); return; }
-    var t = U.$(target); if (!t) return;
+    if (['swim', 'bike', 'run'].indexOf(target) >= 0) { if (validView(target)) A.show(target); return; }
+    var alias = { eff: ['perf', 'tech'], formcard: ['form'], dyn: ['dyn', 'perf'], tech: ['tech'], material: ['material'] };
+    var t = U.$(target); if (!t) (alias[target] || []).some(function (a) { t = U.$(a); return !!t; }); if (!t) return;
     t.scrollIntoView({ behavior: U.MOTION ? 'smooth' : 'auto', block: 'start' });
     t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
   };
   A.openMore = function (section) { st.moreSection = section; A.show('mehr'); };
+  A.state = st;
 
   /* ---------- Erklärung als Blatt ---------- */
   A.explain = function (key) {
@@ -95,7 +140,7 @@
       var m = TL.store.merge(res.units);
       if (!m.saved) { U.toast('Speichern im Browser nicht möglich. Ist privates Surfen aktiv?'); return; }
       var meta = TL.store.meta(); meta.onboarded = true; TL.store.setMeta(meta);
-      quietUntil = Date.now() + 8000; compute(); if (st.view === 'mehr' && !U.$('ob')) st.view = 'tri'; A.render();
+      quietUntil = Date.now() + 8000; compute(); if (st.view === 'mehr' && !U.$('ob')) st.view = null; A.render();
       U.toast(m.added + ' neue Einheiten importiert, ' + m.total + ' insgesamt.', ['Jetzt sichern', S.saveBackup]);
       closeOnboarding();
     });
@@ -185,7 +230,7 @@
   }
 
   /* ---------- Start ---------- */
-  var rT; window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { V.redraw(); }, 150); });
+  var rT, lastW = innerWidth; window.addEventListener('resize', function () { if (Math.abs(innerWidth - lastW) < 2) return; lastW = innerWidth; clearTimeout(rT); rT = setTimeout(function () { V.redraw(); }, 150); });
   document.addEventListener('scroll', U.hideTip, { passive: true });
   A.start = function () {
     if (!TL.store.ok) { U.$('view').appendChild(el('div', { cls: 'card' }, '<h3>Speichern nicht möglich</h3><p class="muted">Dieser Browser erlaubt TriLog keinen lokalen Speicher, zum Beispiel im privaten Modus. Öffne TriLog in einem normalen Fenster.</p>')); return; }

@@ -49,7 +49,18 @@
     swolf: ['swolf', 'avgswolf'],
     srate: ['schlagrate', 'avgstrokerate'],
     steps: ['schritte', 'steps'],
-    laps: ['anzahlderrunden', 'numberoflaps']
+    laps: ['anzahlderrunden', 'numberoflaps'],
+    sap: ['durchschnittlichesap', 'avggap', 'sap', 'gap'],
+    stride: ['schrittlänge', 'avgstridelength'],
+    vr: ['durchschnittlichesvertikalesverhältnis', 'vertikalesverhältnis', 'avgverticalratio'],
+    vo: ['vertikalebewegung', 'avgverticaloscillation'],
+    gct: ['bodenkontaktzeit', 'avggroundcontacttime'],
+    bb: ['bodybatteryabnahme', 'bodybatterydrain'],
+    tmin: ['minimaletemperatur', 'mintemp'],
+    tmax: ['maximaletemperatur', 'maxtemp'],
+    te: ['aerobete', 'aerobicte'],
+    reps: ['wiederholungeninsgesamt', 'totalreps'],
+    sets: ['sätzeinsgesamt', 'totalsets']
   };
   function mapCols(header) {
     var n = header.map(norm), map = {};
@@ -138,8 +149,13 @@
         elev: num(g('ascent'), comma), kcal: num(g('kcal'), comma), steps: num(g('steps'), comma),
         cad: cls[0] === 'run' ? num(g('runcad'), comma) : (cls[0] === 'bike' ? num(g('bikecad'), comma) : null),
         pow: cls[0] === 'bike' && pw ? pw : null, np: cls[0] === 'bike' && np ? np : null, tss: tss && tss > 0 ? tss : null,
-        swolf: num(g('swolf'), comma), srate: num(g('srate'), comma), strokes: num(g('strokes'), comma)
+        swolf: num(g('swolf'), comma), srate: num(g('srate'), comma), strokes: num(g('strokes'), comma),
+        rpow: cls[0] === 'run' && pw ? pw : null, rnp: cls[0] === 'run' && np ? np : null,
+        sap: cls[0] === 'run' ? dur(g('sap')) : null, stride: num(g('stride'), comma), vr: num(g('vr'), comma), vo: num(g('vo'), comma), gct: num(g('gct'), comma),
+        bb: (function (b) { return b == null ? null : Math.abs(b); })(num(g('bb'), comma)), tmin: num(g('tmin'), comma), tmax: num(g('tmax'), comma), te: num(g('te'), comma),
+        reps: num(g('reps'), comma), sets: num(g('sets'), comma)
       };
+      if (u.sap && (u.sap < 150 || u.sap > 1200)) u.sap = null;
       if (u.sport === 'run' && u.cad && u.cad < 120) u.cad *= 2;
       u.id = u.ts + '|' + u.sport + '|' + (u.km ? u.km.toFixed(2) : '') + '|' + u.sec;
       out.push(u);
@@ -157,6 +173,10 @@
     profile: function () { return load('profile', {}); },
     races: function () { return load('races', []); },
     plan: function () { return load('plan', {}); },
+    gear: function () { return load('gear', []); },
+    setGear: function (g) { save('gear', g); TL.store.touch(); },
+    assign: function () { return load('assign', {}); },
+    setAssign: function (a) { save('assign', a); TL.store.touch(); },
     meta: function () { return load('meta', { lastBackup: null, lastChange: null, onboarded: false, imports: [] }); },
     setMeta: function (m) { save('meta', m); },
     touch: function () { var m = TL.store.meta(); m.lastChange = Date.now(); save('meta', m); },
@@ -172,14 +192,14 @@
       var m = TL.store.meta(); m.imports = (m.imports || []).concat([{ at: Date.now(), n: list.length, added: added }]).slice(-20); m.lastChange = Date.now(); save('meta', m);
       return { added: added, total: cur.length, saved: ok };
     },
-    clearAll: function () { ['units', 'profile', 'races', 'plan', 'meta'].forEach(function (k) { try { localStorage.removeItem(K + k); } catch (e) {} }); },
+    clearAll: function () { ['units', 'profile', 'races', 'plan', 'meta', 'gear', 'assign'].forEach(function (k) { try { localStorage.removeItem(K + k); } catch (e) {} }); },
     backup: function () {
-      return JSON.stringify({ app: 'TriLog', version: 1, created: new Date().toISOString(), profile: TL.store.profile(), races: TL.store.races(), plan: TL.store.plan(), units: TL.store.units() });
+      return JSON.stringify({ app: 'TriLog', version: 1, created: new Date().toISOString(), profile: TL.store.profile(), races: TL.store.races(), plan: TL.store.plan(), gear: TL.store.gear(), assign: TL.store.assign(), units: TL.store.units() });
     },
     restore: function (text) {
       var b = JSON.parse(text);
       if (!b || b.app !== 'TriLog') throw new Error('Das ist keine TriLog-Sicherung.');
-      save('profile', b.profile || {}); save('races', b.races || []); save('plan', b.plan || {});
+      save('profile', b.profile || {}); save('races', b.races || []); save('plan', b.plan || {}); save('gear', b.gear || []); save('assign', b.assign || {});
       if (b.units) save('units', b.units);
       var m = TL.store.meta(); m.lastBackup = Date.now(); m.lastChange = Date.now() - 1; m.onboarded = true; save('meta', m);
       return (b.units || []).length;

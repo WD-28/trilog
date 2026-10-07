@@ -237,6 +237,7 @@
     SW.predFor = function (m, f) { return SW.ready ? Math.round(m / 100 * SW.css * f) : null; };
 
     /* ---------- Rennen ---------- */
+    (races || []).forEach(function (r) { r.goalBad = false; if (!r.goal) return; var min = r.kind === 'tri' ? { S: 2700, O: 5400, H: 13000, F: 26000 }[r.dist] : M.RUNDIST[r.dist].km * 140; if (r.goal < min * 0.8) { r.goalBad = r.goal; r.goal = null; } });
     var list = (races || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     var future = list.filter(function (r) { return U.dn(r.date) >= realToday; });
     R.races = list;
@@ -267,6 +268,7 @@
     var ad = Object.keys(act).map(Number).sort(function (a, b) { return a - b; }), best = 0, run_ = 0, end_ = null;
     ad.forEach(function (d, i) { run_ = i && d - ad[i - 1] === 1 ? run_ + 1 : 1; if (run_ > best) { best = run_; end_ = d; } });
     R.active = { days: ad.length, streak: best, streakEnd: end_ };
+    if (M.extend) M.extend(R, opts);
     return R;
   };
 
